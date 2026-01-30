@@ -1,0 +1,6 @@
+# Binary
+ffmpeg-converter
+ffmpeg-converter.exe
+
+# Build output
+/build/
