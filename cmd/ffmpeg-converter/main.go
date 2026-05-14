@@ -39,6 +39,7 @@ func main() {
 	useDocker := flag.Bool("docker", true, "Use Docker ffmpeg (default)")
 	useLocal := flag.Bool("local", false, "Use local ffmpeg instead of Docker")
 	includeAudio := flag.Bool("audio", false, "Include audio in output (overrides profile default)")
+	speed := flag.Float64("speed", 0, "Playback speed multiplier (e.g. 2.0 = 2x, 0.5 = half). 0 = use profile default")
 	dryRun := flag.Bool("dry-run", false, "Print commands without executing")
 
 	// Profile flags
@@ -58,6 +59,8 @@ func main() {
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
 		fmt.Fprintf(os.Stderr, "  %s -input ./videos -output ./results\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -input ./videos -ext mkv -local -audio\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -profile 2x -input ./videos\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -speed 1.5 -input ./videos\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -list-profiles\n", os.Args[0])
 	}
 
@@ -142,6 +145,12 @@ func main() {
 		audioEnabled = true
 	}
 
+	// Determine speed: CLI flag (when > 0) overrides profile default
+	speedValue := profile.Speed
+	if *speed > 0 {
+		speedValue = *speed
+	}
+
 	converter := ffmpeg.NewConverter(ffmpeg.Config{
 		UseDocker:    dockerMode,
 		CRF:          profile.CRF,
@@ -150,6 +159,7 @@ func main() {
 		Scale:        profile.Scale,
 		IncludeAudio: audioEnabled,
 		DryRun:       *dryRun,
+		Speed:        speedValue,
 	})
 
 	successCount := 0
@@ -217,8 +227,8 @@ func printProfiles() {
 	for _, p := range ffmpeg.ListProfiles() {
 		fmt.Printf("  %s\n", p.Name)
 		fmt.Printf("    Description: %s\n", p.Description)
-		fmt.Printf("    CRF: %s, Preset: %s, Bitrate: %s, Scale: %s, Audio: %v\n",
-			p.CRF, p.Preset, p.Bitrate, p.Scale, p.Audio)
+		fmt.Printf("    CRF: %s, Preset: %s, Bitrate: %s, Scale: %s, Audio: %v, Speed: %gx\n",
+			p.CRF, p.Preset, p.Bitrate, p.Scale, p.Audio, p.Speed)
 		fmt.Println()
 	}
 }

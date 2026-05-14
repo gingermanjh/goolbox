@@ -11,6 +11,7 @@ type Profile struct {
 	Bitrate     string
 	Scale       string
 	Audio       bool
+	Speed       float64
 }
 
 // BuiltinProfiles contains all available profiles
@@ -23,6 +24,17 @@ var BuiltinProfiles = map[string]Profile{
 		Bitrate:     "3000k",
 		Scale:       "1920:1080",
 		Audio:       false,
+		Speed:       1.0,
+	},
+	"2x": {
+		Name:        "2x",
+		Description: "Play video at 2x speed (audio pitch preserved when enabled)",
+		CRF:         "18",
+		Preset:      "slow",
+		Bitrate:     "3000k",
+		Scale:       "1920:1080",
+		Audio:       false,
+		Speed:       2.0,
 	},
 }
 

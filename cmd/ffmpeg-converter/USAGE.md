@@ -4,6 +4,7 @@
 
 - [기본 실행](#기본-실행)
 - [프로파일](#프로파일)
+- [재생 속도 조절](#재생-속도-조절)
 - [전체 옵션](#전체-옵션)
 - [사용 예시](#사용-예시)
 - [의존성 자동 설치](#의존성-자동-설치)
@@ -24,7 +25,7 @@
 
 ## 프로파일
 
-인코딩 설정은 프로파일로 관리됩니다. 프로파일은 CRF, 프리셋, 비트레이트, 해상도, 오디오 설정을 포함합니다.
+인코딩 설정은 프로파일로 관리됩니다. 프로파일은 CRF, 프리셋, 비트레이트, 해상도, 오디오, 재생 속도 설정을 포함합니다.
 
 ### 프로파일 목록 보기
 
@@ -36,9 +37,13 @@
 ```
 Available encoding profiles:
 
+  2x
+    Description: Play video at 2x speed (audio pitch preserved when enabled)
+    CRF: 18, Preset: slow, Bitrate: 3000k, Scale: 1920:1080, Audio: false, Speed: 2x
+
   standard
     Description: Default encoding settings
-    CRF: 18, Preset: slow, Bitrate: 3000k, Scale: 1920:1080, Audio: false
+    CRF: 18, Preset: slow, Bitrate: 3000k, Scale: 1920:1080, Audio: false, Speed: 1x
 ```
 
 ### 프로파일 사용
@@ -49,13 +54,17 @@ Available encoding profiles:
 
 # 명시적으로 프로파일 지정
 ./ffmpeg-converter -profile standard
+
+# 2배속 프로파일 사용
+./ffmpeg-converter -profile 2x
 ```
 
 ### 내장 프로파일
 
-| 프로파일 | CRF | Preset | Bitrate | Scale | Audio | 설명 |
-|----------|-----|--------|---------|-------|-------|------|
-| `standard` | 18 | slow | 3000k | 1920:1080 | false | 기본 설정 |
+| 프로파일 | CRF | Preset | Bitrate | Scale | Audio | Speed | 설명 |
+|----------|-----|--------|---------|-------|-------|-------|------|
+| `standard` | 18 | slow | 3000k | 1920:1080 | false | 1x | 기본 설정 |
+| `2x` | 18 | slow | 3000k | 1920:1080 | false | 2x | 영상을 2배속으로 재생 |
 
 ### 오디오 오버라이드
 
@@ -65,6 +74,54 @@ Available encoding profiles:
 # standard 프로파일 + 오디오 포함
 ./ffmpeg-converter -audio
 ```
+
+---
+
+## 재생 속도 조절
+
+영상을 임의 배속(예: 2배속, 1.5배속, 슬로우모션)으로 변환할 수 있습니다. 두 가지 방법이 있습니다.
+
+### 1. 프로파일 사용
+
+```bash
+# 2배속 프로파일
+./ffmpeg-converter -profile 2x
+```
+
+### 2. `-speed` 플래그로 임의 배속 지정
+
+`-speed`는 프로파일의 Speed 값을 오버라이드합니다.
+
+```bash
+# 2배속
+./ffmpeg-converter -speed 2.0
+
+# 1.5배속
+./ffmpeg-converter -speed 1.5
+
+# 3배속 + 오디오 포함 (피치 유지)
+./ffmpeg-converter -speed 3.0 -audio
+
+# 절반 속도 (슬로우모션)
+./ffmpeg-converter -speed 0.5
+```
+
+### 동작 원리
+
+- **영상**: `setpts=(1/speed)*PTS` 필터로 프레임 타임스탬프를 재계산합니다.
+- **오디오** (`-audio` 사용 시): `atempo=speed` 필터로 속도만 변경하고 피치는 유지합니다.
+- `atempo`의 유효 범위는 `[0.5, 2.0]`이지만, 그 밖의 값(예: 5배속, 0.25배속)도 자동으로 필터를 체이닝하여 처리합니다.
+  - 예: `-speed 5 -audio` → `atempo=2.0,atempo=2.0,atempo=1.25`
+  - 예: `-speed 0.25 -audio` → `atempo=0.5,atempo=0.5`
+
+### 동작 확인 (dry-run)
+
+```bash
+./ffmpeg-converter -profile 2x -dry-run
+./ffmpeg-converter -speed 1.5 -audio -dry-run
+```
+
+생성되는 ffmpeg 명령어에서 `-vf setpts=...,scale=...` 및 (오디오 포함 시) `-af atempo=...`가 포함되는지 확인하면 됩니다.
 
 ---
 
@@ -93,6 +150,7 @@ Available encoding profiles:
 | `-profile` | `standard` | 사용할 인코딩 프로파일 |
 | `-list-profiles` | `false` | 사용 가능한 프로파일 목록 출력 |
 | `-audio` | `false` | 오디오 포함 (프로파일 기본값 오버라이드) |
+| `-speed` | `0` | 재생 속도 배율 (예: `2.0`=2배속, `0.5`=절반). `0`이면 프로파일 값 사용 |
 
 ### 의존성 관리 옵션
 
@@ -146,6 +204,22 @@ Available encoding profiles:
 ./ffmpeg-converter -profile standard -audio
 ```
 
+### 재생 속도 조절
+
+```bash
+# 2배속 프로파일
+./ffmpeg-converter -profile 2x
+
+# 1.5배속 (임의 배속)
+./ffmpeg-converter -speed 1.5
+
+# 2배속 + 오디오 포함 (피치 유지)
+./ffmpeg-converter -speed 2.0 -audio
+
+# 슬로우모션 (절반 속도)
+./ffmpeg-converter -speed 0.5
+```
+
 ### 테스트 및 확인
 
 ```bash
@@ -182,7 +256,8 @@ Available encoding profiles:
   -ext mkv \
   -local \
   -profile standard \
-  -audio
+  -audio \
+  -speed 2.0
 ```
 
 ---

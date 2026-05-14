@@ -7,6 +7,7 @@ ffmpeg를 사용하여 비디오 파일을 MP4(H.264)로 일괄 변환하는 CLI
 - **두 가지 실행 모드**: Docker 컨테이너 또는 로컬 ffmpeg 사용
 - **일괄 변환**: 디렉토리 내 모든 비디오 파일을 한 번에 변환
 - **프로파일 기반 인코딩**: 미리 정의된 프로파일로 간편한 설정
+- **재생 속도 조절**: 영상을 임의 배속(예: 2배속, 1.5배속)으로 변환. 오디오 포함 시 피치 유지
 - **의존성 자동 관리**: Homebrew, ffmpeg, Docker 자동 설치
 - **Finder 호환**: 더블클릭으로 실행 가능
 
@@ -67,6 +68,12 @@ make build/all    # darwin, linux, windows 전체
 # 특정 디렉토리 지정
 ./ffmpeg-converter -input /path/to/videos -output /path/to/output
 
+# 2배속 영상으로 변환 (프로파일 사용)
+./ffmpeg-converter -profile 2x
+
+# 임의 배속 (1.5배속, 오디오 포함)
+./ffmpeg-converter -speed 1.5 -audio
+
 # 실행 전 명령어 확인 (dry-run)
 ./ffmpeg-converter -dry-run
 ```
@@ -77,17 +84,38 @@ make build/all    # darwin, linux, windows 전체
 
 인코딩 설정은 프로파일로 관리됩니다.
 
-| 프로파일 | CRF | Preset | Bitrate | Scale | Audio | 설명 |
-|----------|-----|--------|---------|-------|-------|------|
-| `standard` | 18 | slow | 3000k | 1920:1080 | false | 기본 설정 |
+| 프로파일 | CRF | Preset | Bitrate | Scale | Audio | Speed | 설명 |
+|----------|-----|--------|---------|-------|-------|-------|------|
+| `standard` | 18 | slow | 3000k | 1920:1080 | false | 1x | 기본 설정 |
+| `2x` | 18 | slow | 3000k | 1920:1080 | false | 2x | 영상을 2배속으로 재생 |
 
 ```bash
 # 프로파일 목록 확인
 ./ffmpeg-converter -list-profiles
 
-# 특정 프로파일 사용 (현재는 standard만 제공)
+# 특정 프로파일 사용
 ./ffmpeg-converter -profile standard
+./ffmpeg-converter -profile 2x
 ```
+
+## 재생 속도 조절
+
+`-speed` 플래그로 임의 배속을 지정할 수 있습니다. 프로파일의 기본 Speed 값을 오버라이드합니다.
+
+```bash
+# 2배속
+./ffmpeg-converter -speed 2.0
+
+# 1.5배속 + 오디오 포함 (피치 유지)
+./ffmpeg-converter -speed 1.5 -audio
+
+# 절반 속도(슬로우모션)
+./ffmpeg-converter -speed 0.5
+```
+
+- 값이 `0`이거나 지정하지 않으면 프로파일의 Speed 값이 사용됩니다.
+- 오디오가 포함된 경우 `atempo` 필터가 적용되어 속도만 바뀌고 피치는 유지됩니다.
+- 극단적인 배속(예: 5x, 0.25x)도 자동으로 `atempo` 필터 체이닝으로 처리됩니다.
 
 ## 기본 동작
 
