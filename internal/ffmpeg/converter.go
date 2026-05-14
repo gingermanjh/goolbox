@@ -2,6 +2,7 @@ package ffmpeg
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,6 +17,9 @@ type Config struct {
 	Scale        string
 	IncludeAudio bool
 	DryRun       bool
+	// Speed is the playback speed multiplier. 1.0 = normal, 2.0 = twice as fast,
+	// 0.5 = half speed. Values <= 0 are treated as 1.0 (no change).
+	Speed float64
 }
 
 type Converter struct {
@@ -53,17 +57,64 @@ func (c *Converter) buildFFmpegArgs(inputFile, outputFile string) []string {
 		"-crf", c.Config.CRF,
 		"-preset", c.Config.Preset,
 		"-b:v", c.Config.Bitrate,
-		"-vf", fmt.Sprintf("scale=%s", c.Config.Scale),
+		"-vf", c.buildVideoFilter(),
 	}
 
 	if c.Config.IncludeAudio {
 		args = append(args, "-c:a", "aac", "-b:a", "128k")
+		if af := c.buildAudioFilter(); af != "" {
+			args = append(args, "-af", af)
+		}
 	} else {
 		args = append(args, "-an")
 	}
 
 	args = append(args, "-y", outputFile)
 	return args
+}
+
+func (c *Converter) buildVideoFilter() string {
+	scale := fmt.Sprintf("scale=%s", c.Config.Scale)
+	if !c.hasSpeedChange() {
+		return scale
+	}
+	// setpts multiplier is the inverse of the playback speed.
+	return fmt.Sprintf("setpts=%s*PTS,%s", formatFloat(1.0/c.Config.Speed), scale)
+}
+
+func (c *Converter) buildAudioFilter() string {
+	if !c.hasSpeedChange() {
+		return ""
+	}
+	return buildAtempoChain(c.Config.Speed)
+}
+
+func (c *Converter) hasSpeedChange() bool {
+	return c.Config.Speed > 0 && math.Abs(c.Config.Speed-1.0) > 1e-9
+}
+
+// buildAtempoChain produces an atempo filter chain that achieves the requested
+// playback speed. A single atempo filter only accepts factors in [0.5, 100.0];
+// to support smaller or larger factors we chain multiple instances.
+func buildAtempoChain(speed float64) string {
+	var filters []string
+	remaining := speed
+	for remaining > 2.0 {
+		filters = append(filters, "atempo=2.0")
+		remaining /= 2.0
+	}
+	for remaining < 0.5 {
+		filters = append(filters, "atempo=0.5")
+		remaining /= 0.5
+	}
+	if math.Abs(remaining-1.0) > 1e-9 {
+		filters = append(filters, "atempo="+formatFloat(remaining))
+	}
+	return strings.Join(filters, ",")
+}
+
+func formatFloat(v float64) string {
+	return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.6f", v), "0"), ".")
 }
 
 func (c *Converter) buildDockerCommand(inputPath, outputPath string) *exec.Cmd {
