@@ -18,3 +18,9 @@ Thumbs.db
 
 # Go
 vendor/
+
+# local git-hook rules (prek)
+/prek.toml
+
+# coding-agent convention files (kept locally, never committed)
+/CLAUDE.md
