@@ -5,8 +5,13 @@ import (
 	"context"
 	"os/exec"
 	"runtime"
+	"strconv"
 	"strings"
 )
+
+// SupportedContainerMacOSMajor is the minimum macOS major version supported by
+// Apple's container runtime.
+const SupportedContainerMacOSMajor = 26
 
 // Platform represents the current operating system and architecture
 type Platform struct {
@@ -27,19 +32,32 @@ func (p Platform) IsDarwin() bool {
 	return p.OS == "darwin"
 }
 
-// IsLinux returns true if running on Linux
-func (p Platform) IsLinux() bool {
-	return p.OS == "linux"
-}
-
-// IsWindows returns true if running on Windows
-func (p Platform) IsWindows() bool {
-	return p.OS == "windows"
-}
-
 // IsAppleSilicon returns true if running on Apple Silicon (ARM64 Mac)
 func (p Platform) IsAppleSilicon() bool {
 	return p.OS == "darwin" && p.Arch == "arm64"
+}
+
+// SupportsContainer reports whether the host can run Apple's container runtime.
+// It requires macOS 26 or later on Apple silicon.
+func SupportsContainer() bool {
+	p := DetectPlatform()
+	return p.IsDarwin() && p.IsAppleSilicon() && MacOSMajorVersion() >= SupportedContainerMacOSMajor
+}
+
+// MacOSMajorVersion returns the major version of the running macOS, or 0 when
+// it cannot be determined (for example on other operating systems).
+func MacOSMajorVersion() int {
+	out, err := RunCommand(context.Background(), "sw_vers", "-productVersion")
+	if err != nil {
+		return 0
+	}
+
+	major, _, _ := strings.Cut(strings.TrimSpace(out), ".")
+	n, err := strconv.Atoi(major)
+	if err != nil {
+		return 0
+	}
+	return n
 }
 
 // CommandExists checks if a command exists in PATH
@@ -79,24 +97,4 @@ func RunCommand(ctx context.Context, name string, args ...string) (string, error
 
 	err := cmd.Run()
 	return strings.TrimSpace(output.String()), err
-}
-
-// RunCommandSilent runs a command without capturing output
-func RunCommandSilent(ctx context.Context, name string, args ...string) error {
-	cmd := exec.CommandContext(ctx, name, args...)
-	return cmd.Run()
-}
-
-// HasBrew checks if Homebrew is installed
-func HasBrew() bool {
-	return CommandExists("brew")
-}
-
-// GetBrewPath returns the Homebrew binary path based on architecture
-func GetBrewPath() string {
-	p := DetectPlatform()
-	if p.IsAppleSilicon() {
-		return "/opt/homebrew/bin"
-	}
-	return "/usr/local/bin"
 }

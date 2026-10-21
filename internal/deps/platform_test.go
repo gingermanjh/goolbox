@@ -88,17 +88,34 @@ func TestGetCommandVersion(t *testing.T) {
 	}
 }
 
-func TestGetBrewPath(t *testing.T) {
-	path := GetBrewPath()
+func TestMacOSMajorVersion(t *testing.T) {
+	version := MacOSMajorVersion()
 
+	if runtime.GOOS == "darwin" {
+		if version <= 0 {
+			t.Errorf("MacOSMajorVersion() = %d, want > 0 on macOS", version)
+		}
+		return
+	}
+
+	if version != 0 {
+		t.Errorf("MacOSMajorVersion() = %d, want 0 on %s", version, runtime.GOOS)
+	}
+}
+
+func TestSupportsContainer(t *testing.T) {
 	platform := DetectPlatform()
-	if platform.IsAppleSilicon() {
-		if path != "/opt/homebrew/bin" {
-			t.Errorf("GetBrewPath() = %v, want /opt/homebrew/bin for Apple Silicon", path)
+	supported := SupportsContainer()
+
+	if !platform.IsDarwin() || !platform.IsAppleSilicon() {
+		if supported {
+			t.Error("SupportsContainer() should be false outside Apple silicon macOS")
 		}
-	} else if platform.IsDarwin() {
-		if path != "/usr/local/bin" {
-			t.Errorf("GetBrewPath() = %v, want /usr/local/bin for Intel Mac", path)
-		}
+		return
+	}
+
+	want := MacOSMajorVersion() >= SupportedContainerMacOSMajor
+	if supported != want {
+		t.Errorf("SupportsContainer() = %v, want %v", supported, want)
 	}
 }

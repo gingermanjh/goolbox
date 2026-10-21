@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	"goolbox/internal/deps"
@@ -36,8 +35,6 @@ func main() {
 	inputDir := flag.String("input", execDir, "Input directory containing video files")
 	outputDir := flag.String("output", filepath.Join(execDir, "results"), "Output directory for converted files")
 	ext := flag.String("ext", "avi", "Input file extension to search for")
-	useDocker := flag.Bool("docker", true, "Use Docker ffmpeg (default)")
-	useLocal := flag.Bool("local", false, "Use local ffmpeg instead of Docker")
 	includeAudio := flag.Bool("audio", false, "Include audio in output (overrides profile default)")
 	speed := flag.Float64("speed", 0, "Playback speed multiplier (e.g. 2.0 = 2x, 0.5 = half). 0 = use profile default")
 	dryRun := flag.Bool("dry-run", false, "Print commands without executing")
@@ -53,12 +50,12 @@ func main() {
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [options]\n\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "Convert video files using ffmpeg (via Docker or local installation)\n\n")
+		fmt.Fprintf(os.Stderr, "Convert video files using ffmpeg in an Apple container\n\n")
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nExamples:\n")
 		fmt.Fprintf(os.Stderr, "  %s -input ./videos -output ./results\n", os.Args[0])
-		fmt.Fprintf(os.Stderr, "  %s -input ./videos -ext mkv -local -audio\n", os.Args[0])
+		fmt.Fprintf(os.Stderr, "  %s -input ./videos -ext mkv -audio\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -profile 2x -input ./videos\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -speed 1.5 -input ./videos\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "  %s -list-profiles\n", os.Args[0])
@@ -86,11 +83,17 @@ func main() {
 		os.Exit(1)
 	}
 
-	dockerMode := *useDocker && !*useLocal
+	// Apple container only runs on macOS 26 or later on Apple silicon.
+	if !deps.SupportsContainer() {
+		fmt.Fprintf(os.Stderr, "This tool requires macOS %d or later on Apple silicon.\n", deps.SupportedContainerMacOSMajor)
+		os.Exit(1)
+	}
+
+	container := deps.NewContainerDependency()
 
 	// Check and install dependencies if needed
 	if !*noAutoInstall {
-		if err := ensureDependencies(dockerMode, *autoInstall, *skipConfirm); err != nil {
+		if err := ensureDependencies(container, *autoInstall, *skipConfirm); err != nil {
 			fmt.Fprintf(os.Stderr, "Dependency error: %v\n", err)
 			os.Exit(1)
 		}
@@ -132,11 +135,7 @@ func main() {
 	fmt.Printf("Found %d .%s file(s) to convert\n", len(files), *ext)
 	fmt.Printf("Input directory: %s\n", absInputDir)
 	fmt.Printf("Output directory: %s\n", absOutputDir)
-	if dockerMode {
-		fmt.Println("Mode: Docker")
-	} else {
-		fmt.Println("Mode: Local ffmpeg")
-	}
+	fmt.Println("Mode: Apple container")
 	fmt.Println()
 
 	// Determine audio setting: CLI flag overrides profile default
@@ -152,7 +151,6 @@ func main() {
 	}
 
 	converter := ffmpeg.NewConverter(ffmpeg.Config{
-		UseDocker:    dockerMode,
 		CRF:          profile.CRF,
 		Preset:       profile.Preset,
 		Scale:        profile.Scale,
@@ -186,9 +184,9 @@ func main() {
 	}
 }
 
-// ensureDependencies checks and installs required dependencies based on the mode
-func ensureDependencies(dockerMode, autoInstall, skipConfirm bool) error {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Minute)
+// ensureDependencies checks and installs the Apple container runtime
+func ensureDependencies(container *deps.ContainerDependency, autoInstall, skipConfirm bool) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
 	manager := deps.NewManager(autoInstall, skipConfirm, os.Stdout)
@@ -198,22 +196,8 @@ func ensureDependencies(dockerMode, autoInstall, skipConfirm bool) error {
 		manager.SetInput(bufio.NewReader(os.Stdin))
 	}
 
-	// On macOS, ensure Homebrew is available first (needed for installing other deps)
-	if runtime.GOOS == "darwin" {
-		if err := manager.EnsureDependency(ctx, deps.NewHomebrewDependency()); err != nil {
-			return fmt.Errorf("homebrew: %w", err)
-		}
-	}
-
-	// Check/install the appropriate dependency based on mode
-	if dockerMode {
-		if err := manager.EnsureDependency(ctx, deps.NewDockerDependency()); err != nil {
-			return fmt.Errorf("docker: %w", err)
-		}
-	} else {
-		if err := manager.EnsureDependency(ctx, deps.NewFFmpegDependency()); err != nil {
-			return fmt.Errorf("ffmpeg: %w", err)
-		}
+	if err := manager.EnsureDependency(ctx, container); err != nil {
+		return fmt.Errorf("container: %w", err)
 	}
 
 	return nil
