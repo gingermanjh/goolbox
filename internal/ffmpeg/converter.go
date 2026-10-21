@@ -73,7 +73,9 @@ func (c *Converter) buildFFmpegArgs(inputFile, outputFile string) []string {
 }
 
 func (c *Converter) buildVideoFilter() string {
-	scale := fmt.Sprintf("scale=%s", c.Config.Scale)
+	// The profile gives a target size, not the output size: the picture keeps
+	// its shape and fits inside the box instead of being stretched.
+	scale := fmt.Sprintf("scale=%s:force_original_aspect_ratio=decrease", c.Config.Scale)
 	if !c.hasSpeedChange() {
 		return scale
 	}
