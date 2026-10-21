@@ -13,10 +13,11 @@ import (
 	"strings"
 )
 
-const (
-	// containerReleaseAPI is the GitHub API endpoint listing the latest container release.
-	containerReleaseAPI = "https://api.github.com/repos/apple/container/releases/latest"
+// containerReleaseAPI is the GitHub API endpoint listing the latest container
+// release. It is a variable so the tests can point it at a local server.
+var containerReleaseAPI = "https://api.github.com/repos/apple/container/releases/latest"
 
+const (
 	// containerReleasesPage is where a manual install can be done.
 	containerReleasesPage = "https://github.com/apple/container/releases"
 
@@ -85,6 +86,12 @@ func (c *ContainerDependency) Install(ctx context.Context) error {
 		return err
 	}
 
+	// The package is signed by Apple and gets unpacked and run, so check the
+	// signature before it is used.
+	if output, err := RunCommand(ctx, "pkgutil", "--check-signature", pkgPath); err != nil {
+		return fmt.Errorf("container installer is not signed by Apple: %w (%s)", err, output)
+	}
+
 	// Unpack the package instead of running the system wide installer, which
 	// would ask for an administrator password.
 	extractDir, err := os.MkdirTemp("", "container-extract-*")
@@ -99,7 +106,17 @@ func (c *ContainerDependency) Install(ctx context.Context) error {
 		return fmt.Errorf("failed to unpack container installer: %w (%s)", err, output)
 	}
 
-	payload := filepath.Join(expandDir, "Payload")
+	return copyPayload(ctx, filepath.Join(expandDir, "Payload"), installDir)
+}
+
+// copyPayload copies the unpacked package into the install directory. The
+// directory is emptied first: a partial install must not leave files behind,
+// and copying into an existing directory would put the files one level too
+// deep.
+func copyPayload(ctx context.Context, payload, installDir string) error {
+	if err := os.RemoveAll(installDir); err != nil {
+		return fmt.Errorf("failed to clean the install directory: %w", err)
+	}
 	if err := os.MkdirAll(installDir, 0755); err != nil {
 		return err
 	}
