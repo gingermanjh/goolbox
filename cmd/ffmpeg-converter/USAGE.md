@@ -39,11 +39,11 @@ Available encoding profiles:
 
   2x
     Description: Play video at 2x speed (audio pitch preserved when enabled)
-    CRF: 18, Preset: slow, Bitrate: 3000k, Scale: 1920:1080, Audio: false, Speed: 2x
+    CRF: 18, Preset: slow, Scale: 1920:1080, Audio: false, Speed: 2x
 
   standard
     Description: Default encoding settings
-    CRF: 18, Preset: slow, Bitrate: 3000k, Scale: 1920:1080, Audio: false, Speed: 1x
+    CRF: 18, Preset: slow, Scale: 1920:1080, Audio: false, Speed: 1x
 ```
 
 ### 프로파일 사용
@@ -61,10 +61,10 @@ Available encoding profiles:
 
 ### 내장 프로파일
 
-| 프로파일 | CRF | Preset | Bitrate | Scale | Audio | Speed | 설명 |
-|----------|-----|--------|---------|-------|-------|-------|------|
-| `standard` | 18 | slow | 3000k | 1920:1080 | false | 1x | 기본 설정 |
-| `2x` | 18 | slow | 3000k | 1920:1080 | false | 2x | 영상을 2배속으로 재생 |
+| 프로파일 | CRF | Preset | Scale | Audio | Speed | 설명 |
+|----------|-----|--------|-------|-------|-------|------|
+| `standard` | 18 | slow | 1920:1080 | false | 1x | 기본 설정 |
+| `2x` | 18 | slow | 1920:1080 | false | 2x | 영상을 2배속으로 재생 |
 
 ### 오디오 오버라이드
 
@@ -135,12 +135,10 @@ Available encoding profiles:
 | `-output` | `./results` | 출력 디렉토리 경로 |
 | `-ext` | `avi` | 변환할 파일 확장자 (점 제외) |
 
-### 실행 모드 옵션
+### 실행 옵션
 
 | 옵션 | 기본값 | 설명 |
 |------|--------|------|
-| `-docker` | `true` | Docker 컨테이너의 ffmpeg 사용 |
-| `-local` | `false` | 로컬에 설치된 ffmpeg 사용 |
 | `-dry-run` | `false` | 실제 실행 없이 명령어만 출력 |
 
 ### 프로파일 옵션
@@ -159,6 +157,7 @@ Available encoding profiles:
 | `-auto-install` | `true` | 누락된 의존성 자동 설치 |
 | `-no-auto-install` | `false` | 의존성 체크 완전히 건너뜀 |
 | `-y` | `false` | 설치 확인 프롬프트 생략 |
+| `-keep-services` | `false` | 변환 후에도 container 서비스를 계속 실행 |
 
 ### 기타 옵션
 
@@ -174,11 +173,8 @@ Available encoding profiles:
 ### 기본 변환
 
 ```bash
-# Docker 모드 (기본)
+# 기본 실행 (Apple container)
 ./ffmpeg-converter
-
-# 로컬 ffmpeg 사용
-./ffmpeg-converter -local
 ```
 
 ### 입출력 디렉토리 지정
@@ -239,9 +235,6 @@ Available encoding profiles:
 # 확인 프롬프트 없이 자동 설치
 ./ffmpeg-converter -y
 
-# 로컬 모드 + 자동 설치 (프롬프트 없음)
-./ffmpeg-converter -local -y
-
 # 의존성 체크 건너뛰기 (이미 설치된 경우)
 ./ffmpeg-converter -no-auto-install
 ```
@@ -254,7 +247,6 @@ Available encoding profiles:
   -input ./raw_videos \
   -output ./converted \
   -ext mkv \
-  -local \
   -profile standard \
   -audio \
   -speed 2.0
@@ -264,71 +256,86 @@ Available encoding profiles:
 
 ## 의존성 자동 설치
 
-프로그램 실행 시 필요한 의존성을 자동으로 확인하고 설치합니다.
+프로그램 실행 시 Apple `container` 런타임을 자동으로 확인하고 설치합니다.
 
 ### 시나리오별 동작
 
-#### Docker 모드에서 Docker가 없는 경우
+#### container가 설치되어 있지 않은 경우
 
 ```
-✓ Homebrew is installed
-✗ Docker is not installed
-Install Docker? [y/N]: y
-Installing Docker...
-✓ Docker installed successfully
-Starting Docker...
-Waiting for Docker daemon to be ready...
-✓ Docker started successfully
+✗ Apple container is not installed
+Install Apple container? [y/N]: y
+Installing Apple container...
+✓ Apple container installed successfully
+Starting Apple container...
+✓ Apple container started successfully
 ```
 
-#### Local 모드에서 ffmpeg이 없는 경우
+#### container는 설치되어 있지만 서비스가 중지된 경우
 
 ```
-✓ Homebrew is installed
-✗ ffmpeg is not installed
-Install ffmpeg? [y/N]: y
-Installing ffmpeg...
-✓ ffmpeg installed successfully
+⚠ Apple container is installed but stopped
+Start Apple container? [y/N]: y
+Starting Apple container...
+✓ Apple container started successfully
 ```
 
-#### Docker가 설치되어 있지만 실행 중이 아닌 경우
+#### 이미 실행 중인 경우
 
 ```
-✓ Homebrew is installed
-⚠ Docker is installed but stopped
-Start Docker? [y/N]: y
-Starting Docker...
-Waiting for Docker daemon to be ready...
-✓ Docker started successfully
+✓ Apple container is running
 ```
+
+> 설치 패키지는 `/usr/local`에 설치되므로 관리자 인증이 필요합니다.
+> 자동 설치 대신 [공식 릴리스 페이지](https://github.com/apple/container/releases)에서
+> 직접 설치할 수도 있습니다.
+>
+> 설치는 **1회만** 이루어지고, 이후 실행은 서비스 기동(0.5초) + 컨테이너 부팅(0.6초)만
+> 소요됩니다. 자세한 비용과 디스크 점유는 [README.md](README.md#설치는-1회-실행마다-약-1초)를 참고하세요.
+
+### 변환 후 자원 정리
+
+변환이 끝나면 남은 자원을 자동으로 정리합니다.
+
+```
+Conversion complete: 12 succeeded, 0 failed
+Container services stopped
+```
+
+| 대상 | 처리 |
+|------|------|
+| 컨테이너 | `--rm`으로 실행 직후 자동 삭제 |
+| microVM | 컨테이너 종료와 함께 내려감 |
+| 낡은 이미지 | 무태그(dangling) 이미지만 정리 — 현재 쓰는 `latest`는 캐시로 유지 |
+| 백그라운드 서비스 | 종료 (약 45MB frees) |
+
+`-keep-services`를 주면 서비스를 종료하지 않고 남겨둡니다.
 
 ---
 
 ## 문제 해결
 
-### Docker 관련
+### container 관련
 
-**문제**: Docker daemon is not running
+**문제**: This tool requires macOS 26 or later on Apple silicon.
 ```bash
-# 해결: Docker Desktop을 시작하거나 -y 옵션으로 자동 시작
-./ffmpeg-converter -y
+# 해결: 지원 환경은 macOS 26+ Apple silicon입니다.
+# 이전 macOS나 Intel Mac은 지원하지 않습니다.
 ```
 
-**문제**: Docker 이미지를 찾을 수 없음
+**문제**: apiserver is not running and not registered with launchd
+```bash
+# 해결 1: 자동 시작
+./ffmpeg-converter -y
+
+# 해결 2: 수동 시작
+container system start
+```
+
+**문제**: 컨테이너 이미지를 찾을 수 없음
 ```bash
 # 해결: 첫 실행 시 이미지를 자동으로 다운로드합니다
 # 네트워크 연결을 확인하세요
-```
-
-### ffmpeg 관련
-
-**문제**: ffmpeg: command not found
-```bash
-# 해결 1: 자동 설치 사용
-./ffmpeg-converter -local -y
-
-# 해결 2: 수동 설치
-brew install ffmpeg
 ```
 
 ### 파일 관련
@@ -361,8 +368,18 @@ chmod 755 ./results
 
 ### 기타
 
+**문제**: 디스크를 많이 차지한다
+```bash
+# 해결: 현재 사용 중인 이미지까지 삭제 (다음 실행 시 다시 pull됨)
+container system start
+container image prune --all
+container system stop
+```
+
 **문제**: 변환이 너무 느림
 ```bash
-# 해결: 로컬 ffmpeg 사용 (Docker 오버헤드 제거)
-./ffmpeg-converter -local
+# 해결: 첫 실행은 컨테이너 이미지와 커널 다운로드로 시간이 걸립니다.
+# 이후 실행은 캐시가 재사용되어 빠르게 처리됩니다.
+# 반복 실행이 많으면 서비스 기동 시간을 아끼기 위해:
+./ffmpeg-converter -keep-services
 ```
