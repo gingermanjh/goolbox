@@ -14,6 +14,25 @@ Go로 작성된 CLI 애플리케이션 모음입니다.
 - macOS 26 (Tahoe) 이상, Apple silicon — `ffmpeg-converter`는 Apple `container` 런타임에 의존합니다.
 - [just](https://just.systems) — 태스크 러너 (mise: `mise use -g just`)
 
+## 처음 사용할 때
+
+런타임은 별도로 준비하지 않습니다. 첫 실행에서 자동으로 설치됩니다.
+
+```bash
+git clone https://github.com/gingermanjh/goolbox.git
+cd goolbox
+just build
+./cmd/ffmpeg-converter/ffmpeg-converter
+```
+
+첫 실행에서 `container` 런타임을 홈 디렉터리에 설치하고(관리자 인증 불필요), Linux 커널과
+ffmpeg 이미지를 내려받아 캐시합니다. 그 뒤부터는 캐시가 재사용되어 그대로 실행됩니다.
+
+```bash
+# Go와 just만 없다면 mise로 설치
+mise use -g go just
+```
+
 ## 프로젝트 구조
 
 ```

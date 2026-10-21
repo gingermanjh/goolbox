@@ -122,20 +122,17 @@ just install
 1. `container` 명령 확인 (없으면 GitHub 릴리스의 공식 설치 패키지를 내려받아 설치)
 2. `container` 서비스 상태 확인 (중지 상태면 자동 시작)
 
-설치 패키지는 `/usr/local`에 설치되므로 관리자 인증이 필요합니다.
+설치는 홈 디렉터리(`~/.local/container`)에 이루어지므로 관리자 인증이 필요 없습니다.
+이미 시스템에 설치된 런타임(`/usr/local/bin/container`)이 있으면 그쪽을 그대로 사용합니다.
 
 ### 의존성 관련 옵션
 
 | 옵션 | 기본값 | 설명 |
 |------|--------|------|
-| `-auto-install` | `true` | 의존성 자동 설치 활성화 |
+| `-auto-install` | `true` | 누락된 의존성 자동 설치 |
 | `-no-auto-install` | `false` | 의존성 체크 완전히 건너뜀 |
-| `-y` | `false` | 설치 확인 프롬프트 생략 |
 
 ```bash
-# 확인 없이 자동 설치
-./ffmpeg-converter -y
-
 # 의존성 체크 생략 (이미 설치된 경우)
 ./ffmpeg-converter -no-auto-install
 ```
@@ -146,13 +143,14 @@ just install
 
 | 작업 | 시점 | 비용 |
 |------|------|------|
-| `container` 설치 | 첫 실행 시 1회 (없을 때만) | pkg 149MB 다운로드 + 관리자 인증 |
+| `container` 설치 | 첫 실행 시 1회 (없을 때만) | pkg 149MB 다운로드, 관리자 인증 불필요 |
 | Linux 커널 다운로드 | 첫 실행 시 1회 | 29MB, 영구 보관 |
 | ffmpeg 이미지 pull | 첫 실행 시 1회 | ~950MB, 캐시 유지 |
 | 서비스 기동 | 매 실행 | 0.5초 |
 | 컨테이너 부팅 | 매 실행 | 0.6초 |
 
 즉 첫 실행 이후에는 **변환 시작까지 약 1.1초**만 소요되고, 영상 개수와 무관합니다.
+설치와 기동은 자동으로 처리되므로 별도의 준비 단계가 없습니다.
 
 ### 디스크 점유
 
@@ -171,7 +169,7 @@ just install
 
 ```bash
 container system stop
-/usr/local/bin/update-container.sh
+~/.local/container/bin/update-container.sh
 container system start
 ```
 
