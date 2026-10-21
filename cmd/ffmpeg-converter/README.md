@@ -129,12 +129,11 @@ just install
 
 | 옵션 | 기본값 | 설명 |
 |------|--------|------|
-| `-auto-install` | `true` | 누락된 의존성 자동 설치 |
-| `-no-auto-install` | `false` | 의존성 체크 완전히 건너뜀 |
+| `-auto-install` | `true` | 누락된 런타임 자동 설치 (`-auto-install=false`로 끄면 설치만 하지 않고, 이미 있으면 기동만 합니다) |
 
 ```bash
-# 의존성 체크 생략 (이미 설치된 경우)
-./ffmpeg-converter -no-auto-install
+# 런타임을 설치하지 않고, 이미 설치된 것만 기동
+./ffmpeg-converter -auto-install=false
 ```
 
 ## 설치는 1회, 실행마다 약 1초
@@ -165,12 +164,11 @@ just install
 
 ### 업데이트
 
-자동 업데이트는 하지 않습니다. 설치된 시점의 최신 릴리스로 고정되며, 업데이트가 필요하면 공식 스크립트를 실행하세요.
+자동 업데이트는 하지 않습니다. 설치된 시점의 최신 릴리스로 고정되며, 업데이트하려면 홈 디렉터리 설치를 지우고 다시 실행하세요. 그럼 툴이 최신 릴리스로 다시 설치합니다.
 
 ```bash
-container system stop
-~/.local/container/bin/update-container.sh
-container system start
+rm -rf ~/.local/container
+./ffmpeg-converter
 ```
 
 ## 변환 후 자원 정리
