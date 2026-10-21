@@ -22,15 +22,13 @@ ffmpeg를 사용하여 비디오 파일을 MP4(H.264)로 일괄 변환하는 CLI
 ### 소스에서 빌드
 
 ```bash
-cd cmd/ffmpeg-converter
-make build
+just build
 ```
 
 ### GOPATH에 설치
 
 ```bash
-cd cmd/ffmpeg-converter
-make install
+just install
 ```
 
 ## 빠른 시작
@@ -209,7 +207,6 @@ container system stop
 ```
 cmd/ffmpeg-converter/
 ├── main.go              # CLI 엔트리포인트
-├── Makefile             # 빌드 스크립트
 ├── README.md            # 이 파일
 └── USAGE.md             # 상세 사용법
 
