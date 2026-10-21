@@ -13,7 +13,6 @@ type Config struct {
 	UseDocker    bool
 	CRF          string
 	Preset       string
-	Bitrate      string
 	Scale        string
 	IncludeAudio bool
 	DryRun       bool
@@ -51,12 +50,13 @@ func (c *Converter) ConvertFile(inputPath, outputPath string) error {
 }
 
 func (c *Converter) buildFFmpegArgs(inputFile, outputFile string) []string {
+	// libx264 rate control is driven by CRF alone. Passing -b:v alongside -crf
+	// has no effect, so target quality is expressed only through CRF.
 	args := []string{
 		"-i", inputFile,
 		"-c:v", "libx264",
 		"-crf", c.Config.CRF,
 		"-preset", c.Config.Preset,
-		"-b:v", c.Config.Bitrate,
 		"-vf", c.buildVideoFilter(),
 	}
 

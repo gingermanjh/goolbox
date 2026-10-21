@@ -155,7 +155,6 @@ func main() {
 		UseDocker:    dockerMode,
 		CRF:          profile.CRF,
 		Preset:       profile.Preset,
-		Bitrate:      profile.Bitrate,
 		Scale:        profile.Scale,
 		IncludeAudio: audioEnabled,
 		DryRun:       *dryRun,
@@ -227,8 +226,8 @@ func printProfiles() {
 	for _, p := range ffmpeg.ListProfiles() {
 		fmt.Printf("  %s\n", p.Name)
 		fmt.Printf("    Description: %s\n", p.Description)
-		fmt.Printf("    CRF: %s, Preset: %s, Bitrate: %s, Scale: %s, Audio: %v, Speed: %gx\n",
-			p.CRF, p.Preset, p.Bitrate, p.Scale, p.Audio, p.Speed)
+		fmt.Printf("    CRF: %s, Preset: %s, Scale: %s, Audio: %v, Speed: %gx\n",
+			p.CRF, p.Preset, p.Scale, p.Audio, p.Speed)
 		fmt.Println()
 	}
 }
