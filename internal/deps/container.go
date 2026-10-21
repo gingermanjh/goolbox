@@ -99,6 +99,28 @@ func (c *ContainerDependency) RequiresStart() bool {
 	return true
 }
 
+// Stop stops the container services so no runtime resources stay behind
+func (c *ContainerDependency) Stop(ctx context.Context) error {
+	output, err := RunCommand(ctx, "container", "system", "stop")
+	if err != nil {
+		return fmt.Errorf("failed to stop container services: %w (%s)", err, output)
+	}
+
+	return nil
+}
+
+// PruneStaleImages removes untagged images left behind by older versions of a
+// tag. The image in use is kept so the next run does not have to pull it again.
+// The container services must be running for this to work.
+func (c *ContainerDependency) PruneStaleImages(ctx context.Context) error {
+	output, err := RunCommand(ctx, "container", "image", "prune")
+	if err != nil {
+		return fmt.Errorf("failed to prune stale container images: %w (%s)", err, output)
+	}
+
+	return nil
+}
+
 // GetVersion returns the installed container version
 func (c *ContainerDependency) GetVersion(ctx context.Context) (string, error) {
 	output, err := GetCommandVersion(ctx, "container", "--version")
