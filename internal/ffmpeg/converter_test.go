@@ -1,6 +1,7 @@
 package ffmpeg
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -242,7 +243,7 @@ func TestBuildContainerCommand(t *testing.T) {
 		Preset:        "slow",
 		Scale:         "1920:1080",
 	})
-	cmd := c.buildContainerCommand("/videos/in/sample.avi", "/videos/out/sample.mp4")
+	cmd := c.buildContainerCommand(context.Background(), "/videos/in/sample.avi", "/videos/out/sample.mp4")
 
 	args := cmd.Args
 	if args[0] != "/usr/local/bin/container" {

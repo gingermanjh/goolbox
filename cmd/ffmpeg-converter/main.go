@@ -151,6 +151,10 @@ func run() int {
 	}
 
 	// Determine speed: CLI flag (when > 0) overrides profile default
+	if *speed < 0 {
+		fmt.Fprintf(os.Stderr, "Speed must not be negative (0 means the profile value).\n")
+		return 1
+	}
 	speedValue := profile.Speed
 	if *speed > 0 {
 		speedValue = *speed

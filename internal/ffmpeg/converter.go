@@ -1,16 +1,22 @@
 package ffmpeg
 
 import (
+	"context"
 	"fmt"
 	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 )
 
 // ContainerImage is the container image that provides ffmpeg.
 const ContainerImage = "linuxserver/ffmpeg:latest"
+
+// conversionTimeout bounds a single conversion, so a wedged ffmpeg does not
+// block the tool forever.
+const conversionTimeout = 2 * time.Hour
 
 type Config struct {
 	// ContainerPath is the path of the container CLI. It is empty when the
@@ -35,7 +41,10 @@ func NewConverter(cfg Config) *Converter {
 }
 
 func (c *Converter) ConvertFile(inputPath, outputPath string) error {
-	cmd := c.buildContainerCommand(inputPath, outputPath)
+	ctx, cancel := context.WithTimeout(context.Background(), conversionTimeout)
+	defer cancel()
+
+	cmd := c.buildContainerCommand(ctx, inputPath, outputPath)
 
 	fmt.Printf("Executing: %s\n", strings.Join(cmd.Args, " "))
 
@@ -120,7 +129,7 @@ func formatFloat(v float64) string {
 
 // buildContainerCommand builds the Apple container command that runs ffmpeg
 // inside the container image with the input and output directories mounted.
-func (c *Converter) buildContainerCommand(inputPath, outputPath string) *exec.Cmd {
+func (c *Converter) buildContainerCommand(ctx context.Context, inputPath, outputPath string) *exec.Cmd {
 	inputDir := filepath.Dir(inputPath)
 	outputDir := filepath.Dir(outputPath)
 	inputFile := filepath.Base(inputPath)
@@ -141,7 +150,7 @@ func (c *Converter) buildContainerCommand(inputPath, outputPath string) *exec.Cm
 		binary = "container"
 	}
 
-	return exec.Command(binary, containerArgs...)
+	return exec.CommandContext(ctx, binary, containerArgs...)
 }
 
 func FindFiles(dir, ext string) ([]string, error) {
