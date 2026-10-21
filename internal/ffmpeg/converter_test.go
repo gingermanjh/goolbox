@@ -236,12 +236,17 @@ func TestBuildFFmpegArgs(t *testing.T) {
 }
 
 func TestBuildContainerCommand(t *testing.T) {
-	c := NewConverter(Config{CRF: "18", Preset: "slow", Scale: "1920:1080"})
+	c := NewConverter(Config{
+		ContainerPath: "/usr/local/bin/container",
+		CRF:           "18",
+		Preset:        "slow",
+		Scale:         "1920:1080",
+	})
 	cmd := c.buildContainerCommand("/videos/in/sample.avi", "/videos/out/sample.mp4")
 
 	args := cmd.Args
-	if args[0] != "container" {
-		t.Errorf("command = %q, want container", args[0])
+	if args[0] != "/usr/local/bin/container" {
+		t.Errorf("command = %q, want /usr/local/bin/container", args[0])
 	}
 
 	wantPrefix := []string{"run", "--rm", "-v", "/videos/in:/input", "-v", "/videos/out:/output", ContainerImage}

@@ -51,7 +51,7 @@ func (m *mockDependency) RequiresStart() bool {
 
 func TestManager_EnsureDependency_AlreadyRunning(t *testing.T) {
 	var output bytes.Buffer
-	manager := NewManager(true, true, &output)
+	manager := NewManager(true, &output)
 
 	dep := &mockDependency{
 		name:          "test-dep",
@@ -78,7 +78,7 @@ func TestManager_EnsureDependency_AlreadyRunning(t *testing.T) {
 
 func TestManager_EnsureDependency_AlreadyInstalled(t *testing.T) {
 	var output bytes.Buffer
-	manager := NewManager(true, true, &output)
+	manager := NewManager(true, &output)
 
 	dep := &mockDependency{
 		name:          "test-dep",
@@ -102,7 +102,7 @@ func TestManager_EnsureDependency_AlreadyInstalled(t *testing.T) {
 
 func TestManager_EnsureDependency_InstalledButNeedsStart(t *testing.T) {
 	var output bytes.Buffer
-	manager := NewManager(true, true, &output)
+	manager := NewManager(true, &output)
 
 	dep := &mockDependency{
 		name:          "test-dep",
@@ -125,7 +125,7 @@ func TestManager_EnsureDependency_InstalledButNeedsStart(t *testing.T) {
 
 func TestManager_EnsureDependency_NotInstalled_AutoInstallDisabled(t *testing.T) {
 	var output bytes.Buffer
-	manager := NewManager(false, true, &output)
+	manager := NewManager(false, &output)
 
 	dep := &mockDependency{
 		name:   "test-dep",
@@ -144,7 +144,7 @@ func TestManager_EnsureDependency_NotInstalled_AutoInstallDisabled(t *testing.T)
 
 func TestManager_EnsureDependency_NotInstalled_AutoInstallEnabled(t *testing.T) {
 	var output bytes.Buffer
-	manager := NewManager(true, true, &output)
+	manager := NewManager(true, &output)
 
 	dep := &mockDependency{
 		name:   "test-dep",
@@ -167,7 +167,7 @@ func TestManager_EnsureDependency_NotInstalled_AutoInstallEnabled(t *testing.T) 
 
 func TestManager_EnsureDependency_Stopped_AutoInstallEnabled(t *testing.T) {
 	var output bytes.Buffer
-	manager := NewManager(true, true, &output)
+	manager := NewManager(true, &output)
 
 	dep := &mockDependency{
 		name:          "test-dep",
@@ -190,7 +190,7 @@ func TestManager_EnsureDependency_Stopped_AutoInstallEnabled(t *testing.T) {
 
 func TestManager_ContextTimeout(t *testing.T) {
 	var output bytes.Buffer
-	manager := NewManager(true, true, &output)
+	manager := NewManager(true, &output)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Millisecond)
 	defer cancel()
@@ -207,6 +207,48 @@ func TestManager_ContextTimeout(t *testing.T) {
 	err := manager.EnsureDependency(ctx, dep)
 	if err != nil {
 		t.Errorf("unexpected error: %v", err)
+	}
+}
+
+func TestManager_EnsureDependency_StoppedStartsWithoutConfirmation(t *testing.T) {
+	var output bytes.Buffer
+	// No input is configured, so a confirmation prompt would fail the run.
+	manager := NewManager(true, &output)
+
+	dep := &mockDependency{
+		name:          "test-dep",
+		status:        StatusStopped,
+		requiresStart: true,
+	}
+
+	err := manager.EnsureDependency(context.Background(), dep)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if !dep.startCalled {
+		t.Error("Start should be called without a confirmation prompt")
+	}
+	if dep.installCalled {
+		t.Error("Install should not be called when only stopped")
+	}
+}
+
+func TestManager_EnsureDependency_NotInstalledInstallsWithoutConfirmation(t *testing.T) {
+	var output bytes.Buffer
+	// No input is configured, so a confirmation prompt would fail the run.
+	manager := NewManager(true, &output)
+
+	dep := &mockDependency{
+		name:   "test-dep",
+		status: StatusNotInstalled,
+	}
+
+	err := manager.EnsureDependency(context.Background(), dep)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if !dep.installCalled {
+		t.Error("Install should be called without a confirmation prompt")
 	}
 }
 

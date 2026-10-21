@@ -13,11 +13,14 @@ import (
 const ContainerImage = "linuxserver/ffmpeg:latest"
 
 type Config struct {
-	CRF          string
-	Preset       string
-	Scale        string
-	IncludeAudio bool
-	DryRun       bool
+	// ContainerPath is the path of the container CLI. It is empty when the
+	// runtime is only reachable through PATH.
+	ContainerPath string
+	CRF           string
+	Preset        string
+	Scale         string
+	IncludeAudio  bool
+	DryRun        bool
 	// Speed is the playback speed multiplier. 1.0 = normal, 2.0 = twice as fast,
 	// 0.5 = half speed. Values <= 0 are treated as 1.0 (no change).
 	Speed float64
@@ -131,7 +134,12 @@ func (c *Converter) buildContainerCommand(inputPath, outputPath string) *exec.Cm
 	}
 	containerArgs = append(containerArgs, ffmpegArgs...)
 
-	return exec.Command("container", containerArgs...)
+	binary := c.Config.ContainerPath
+	if binary == "" {
+		binary = "container"
+	}
+
+	return exec.Command(binary, containerArgs...)
 }
 
 func FindFiles(dir, ext string) ([]string, error) {

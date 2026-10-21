@@ -1,11 +1,9 @@
 package deps
 
 import (
-	"bufio"
 	"context"
 	"fmt"
 	"io"
-	"strings"
 )
 
 // Status represents the status of a dependency
@@ -54,24 +52,15 @@ type Dependency interface {
 // Manager manages dependency checking and installation
 type Manager struct {
 	autoInstall bool
-	skipConfirm bool
 	output      io.Writer
-	input       io.Reader
 }
 
 // NewManager creates a new dependency manager
-func NewManager(autoInstall, skipConfirm bool, output io.Writer) *Manager {
+func NewManager(autoInstall bool, output io.Writer) *Manager {
 	return &Manager{
 		autoInstall: autoInstall,
-		skipConfirm: skipConfirm,
 		output:      output,
-		input:       nil, // Will use stdin if needed
 	}
-}
-
-// SetInput sets the input reader for user prompts (useful for testing)
-func (m *Manager) SetInput(input io.Reader) {
-	m.input = input
 }
 
 // EnsureDependency checks and ensures a dependency is available
@@ -111,16 +100,6 @@ func (m *Manager) installDependency(ctx context.Context, dep Dependency) error {
 		return fmt.Errorf("%s is not installed. Use -auto-install to install it automatically", dep.Name())
 	}
 
-	if !m.skipConfirm {
-		confirmed, err := m.promptConfirm(fmt.Sprintf("Install %s?", dep.Name()))
-		if err != nil {
-			return err
-		}
-		if !confirmed {
-			return fmt.Errorf("installation of %s cancelled by user", dep.Name())
-		}
-	}
-
 	fmt.Fprintf(m.output, "Installing %s...\n", dep.Name())
 	if err := dep.Install(ctx); err != nil {
 		return fmt.Errorf("failed to install %s: %w", dep.Name(), err)
@@ -140,16 +119,8 @@ func (m *Manager) startDependency(ctx context.Context, dep Dependency) error {
 		return fmt.Errorf("%s is not running. Use -auto-install to start it automatically", dep.Name())
 	}
 
-	if !m.skipConfirm {
-		confirmed, err := m.promptConfirm(fmt.Sprintf("Start %s?", dep.Name()))
-		if err != nil {
-			return err
-		}
-		if !confirmed {
-			return fmt.Errorf("start of %s cancelled by user", dep.Name())
-		}
-	}
-
+	// Starting an installed dependency is part of the normal run, so it is not
+	// confirmed. Only the installation asks for a confirmation.
 	fmt.Fprintf(m.output, "Starting %s...\n", dep.Name())
 	if err := dep.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start %s: %w", dep.Name(), err)
@@ -157,24 +128,4 @@ func (m *Manager) startDependency(ctx context.Context, dep Dependency) error {
 
 	fmt.Fprintf(m.output, "✓ %s started successfully\n", dep.Name())
 	return nil
-}
-
-func (m *Manager) promptConfirm(message string) (bool, error) {
-	fmt.Fprintf(m.output, "%s [y/N]: ", message)
-
-	reader := m.input
-	if reader == nil {
-		reader = bufio.NewReader(strings.NewReader("n\n"))
-		// In real usage, this would be os.Stdin
-		// For safety, default to "no" if no input is configured
-		return false, fmt.Errorf("no input available for confirmation prompt")
-	}
-
-	scanner := bufio.NewScanner(reader)
-	if scanner.Scan() {
-		response := strings.TrimSpace(strings.ToLower(scanner.Text()))
-		return response == "y" || response == "yes", nil
-	}
-
-	return false, fmt.Errorf("failed to read user input")
 }

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"context"
 	"flag"
 	"fmt"
@@ -50,7 +49,6 @@ func run() int {
 	// Dependency management flags
 	autoInstall := flag.Bool("auto-install", true, "Automatically install missing dependencies (default: enabled)")
 	noAutoInstall := flag.Bool("no-auto-install", false, "Skip dependency checking entirely")
-	skipConfirm := flag.Bool("y", false, "Skip confirmation prompts for installation")
 
 	// Cleanup flags
 	keepServices := flag.Bool("keep-services", false, "Keep the container services running after the conversion")
@@ -101,7 +99,7 @@ func run() int {
 
 	// Check and install dependencies if needed
 	if !*noAutoInstall {
-		if err := ensureDependencies(container, *autoInstall, *skipConfirm); err != nil {
+		if err := ensureDependencies(container, *autoInstall); err != nil {
 			fmt.Fprintf(os.Stderr, "Dependency error: %v\n", err)
 			return 1
 		}
@@ -162,12 +160,13 @@ func run() int {
 	}
 
 	converter := ffmpeg.NewConverter(ffmpeg.Config{
-		CRF:          profile.CRF,
-		Preset:       profile.Preset,
-		Scale:        profile.Scale,
-		IncludeAudio: audioEnabled,
-		DryRun:       *dryRun,
-		Speed:        speedValue,
+		ContainerPath: deps.ContainerPath(),
+		CRF:           profile.CRF,
+		Preset:        profile.Preset,
+		Scale:         profile.Scale,
+		IncludeAudio:  audioEnabled,
+		DryRun:        *dryRun,
+		Speed:         speedValue,
 	})
 
 	successCount := 0
@@ -220,16 +219,11 @@ func releaseResources(container *deps.ContainerDependency, keepServices bool) {
 }
 
 // ensureDependencies checks and installs the Apple container runtime
-func ensureDependencies(container *deps.ContainerDependency, autoInstall, skipConfirm bool) error {
+func ensureDependencies(container *deps.ContainerDependency, autoInstall bool) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
 	defer cancel()
 
-	manager := deps.NewManager(autoInstall, skipConfirm, os.Stdout)
-
-	// Set up input for confirmation prompts
-	if !skipConfirm {
-		manager.SetInput(bufio.NewReader(os.Stdin))
-	}
+	manager := deps.NewManager(autoInstall, os.Stdout)
 
 	if err := manager.EnsureDependency(ctx, container); err != nil {
 		return fmt.Errorf("container: %w", err)

@@ -156,7 +156,6 @@ Available encoding profiles:
 |------|--------|------|
 | `-auto-install` | `true` | 누락된 의존성 자동 설치 |
 | `-no-auto-install` | `false` | 의존성 체크 완전히 건너뜀 |
-| `-y` | `false` | 설치 확인 프롬프트 생략 |
 | `-keep-services` | `false` | 변환 후에도 container 서비스를 계속 실행 |
 
 ### 기타 옵션
@@ -232,9 +231,6 @@ Available encoding profiles:
 ### 의존성 관리
 
 ```bash
-# 확인 프롬프트 없이 자동 설치
-./ffmpeg-converter -y
-
 # 의존성 체크 건너뛰기 (이미 설치된 경우)
 ./ffmpeg-converter -no-auto-install
 ```
@@ -264,7 +260,6 @@ Available encoding profiles:
 
 ```
 ✗ Apple container is not installed
-Install Apple container? [y/N]: y
 Installing Apple container...
 ✓ Apple container installed successfully
 Starting Apple container...
@@ -275,7 +270,6 @@ Starting Apple container...
 
 ```
 ⚠ Apple container is installed but stopped
-Start Apple container? [y/N]: y
 Starting Apple container...
 ✓ Apple container started successfully
 ```
@@ -286,9 +280,9 @@ Starting Apple container...
 ✓ Apple container is running
 ```
 
-> 설치 패키지는 `/usr/local`에 설치되므로 관리자 인증이 필요합니다.
-> 자동 설치 대신 [공식 릴리스 페이지](https://github.com/apple/container/releases)에서
-> 직접 설치할 수도 있습니다.
+> 설치는 홈 디렉터리(`~/.local/container`)에 이루어지므로 관리자 인증이 필요 없습니다.
+> 이미 시스템에 설치된 런타임이 있으면 그쪽을 사용합니다.
+> 직접 설치하려면 [공식 릴리스 페이지](https://github.com/apple/container/releases)를 참고하세요.
 >
 > 설치는 **1회만** 이루어지고, 이후 실행은 서비스 기동(0.5초) + 컨테이너 부팅(0.6초)만
 > 소요됩니다. 자세한 비용과 디스크 점유는 [README.md](README.md#설치는-1회-실행마다-약-1초)를 참고하세요.
@@ -325,8 +319,8 @@ Container services stopped
 
 **문제**: apiserver is not running and not registered with launchd
 ```bash
-# 해결 1: 자동 시작
-./ffmpeg-converter -y
+# 해결 1: 자동 시작 (기본 동작)
+./ffmpeg-converter
 
 # 해결 2: 수동 시작
 container system start
