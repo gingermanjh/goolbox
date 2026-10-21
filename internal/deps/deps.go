@@ -44,7 +44,7 @@ type Dependency interface {
 	// Install installs the dependency
 	Install(ctx context.Context) error
 
-	// Start starts the dependency (if applicable, e.g., Docker daemon)
+	// Start starts the dependency (if applicable, e.g., the container services)
 	Start(ctx context.Context) error
 
 	// RequiresStart returns true if the dependency needs to be started after installation

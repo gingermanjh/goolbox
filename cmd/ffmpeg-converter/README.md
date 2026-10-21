@@ -1,22 +1,21 @@
 # ffmpeg-converter
 
 ffmpeg를 사용하여 비디오 파일을 MP4(H.264)로 일괄 변환하는 CLI 도구입니다.
+변환은 Apple의 `container` 런타임 안의 Linux 컨테이너에서 수행하므로, 호스트에 ffmpeg를 설치할 필요가 없습니다.
 
 ## 특징
 
-- **두 가지 실행 모드**: Docker 컨테이너 또는 로컬 ffmpeg 사용
+- **컨테이너 기반 변환**: Apple `container` 런타임에서 ffmpeg 이미지(linuxserver/ffmpeg) 실행
 - **일괄 변환**: 디렉토리 내 모든 비디오 파일을 한 번에 변환
 - **프로파일 기반 인코딩**: 미리 정의된 프로파일로 간편한 설정
 - **재생 속도 조절**: 영상을 임의 배속(예: 2배속, 1.5배속)으로 변환. 오디오 포함 시 피치 유지
-- **의존성 자동 관리**: Homebrew, ffmpeg, Docker 자동 설치
+- **의존성 자동 관리**: Apple `container` 런타임 자동 설치
 - **Finder 호환**: 더블클릭으로 실행 가능
 
 ## 요구 사항
 
-- macOS (Linux 부분 지원)
-- 의존성은 실행 시 자동 설치됨:
-  - Docker 모드: Docker Desktop
-  - Local 모드: ffmpeg
+- **macOS 26 (Tahoe) 이상, Apple silicon** — Apple `container` 런타임의 지원 범위
+- 그 외 macOS 버전과 Intel Mac은 지원하지 않습니다.
 
 ## 설치
 
@@ -32,13 +31,6 @@ make build
 ```bash
 cd cmd/ffmpeg-converter
 make install
-```
-
-### 크로스 컴파일
-
-```bash
-cd cmd/ffmpeg-converter
-make build/all    # darwin, linux, windows 전체
 ```
 
 ## 빠른 시작
@@ -59,9 +51,6 @@ make build/all    # darwin, linux, windows 전체
 ### 주요 사용 시나리오
 
 ```bash
-# Docker 대신 로컬 ffmpeg 사용
-./ffmpeg-converter -local
-
 # MKV 파일을 오디오 포함하여 변환
 ./ffmpeg-converter -ext mkv -audio
 
@@ -84,10 +73,10 @@ make build/all    # darwin, linux, windows 전체
 
 인코딩 설정은 프로파일로 관리됩니다.
 
-| 프로파일 | CRF | Preset | Bitrate | Scale | Audio | Speed | 설명 |
-|----------|-----|--------|---------|-------|-------|-------|------|
-| `standard` | 18 | slow | 3000k | 1920:1080 | false | 1x | 기본 설정 |
-| `2x` | 18 | slow | 3000k | 1920:1080 | false | 2x | 영상을 2배속으로 재생 |
+| 프로파일 | CRF | Preset | Scale | Audio | Speed | 설명 |
+|----------|-----|--------|-------|-------|-------|------|
+| `standard` | 18 | slow | 1920:1080 | false | 1x | 기본 설정 |
+| `2x` | 18 | slow | 1920:1080 | false | 2x | 영상을 2배속으로 재생 |
 
 ```bash
 # 프로파일 목록 확인
@@ -124,24 +113,18 @@ make build/all    # darwin, linux, windows 전체
 | 입력 디렉토리 | 실행 파일 위치 |
 | 출력 디렉토리 | `./results/` |
 | 입력 확장자 | `.avi` |
-| 실행 모드 | Docker |
+| 실행 모드 | Apple container |
 | 프로파일 | `standard` |
 | 오디오 | 프로파일 설정 따름 |
 
 ## 의존성 자동 관리
 
-프로그램 실행 시 필요한 의존성을 자동으로 확인하고 설치합니다.
+프로그램 실행 시 Apple `container` 런타임을 자동으로 확인하고 설치합니다.
 
-### Docker 모드 (기본)
+1. `container` 명령 확인 (없으면 GitHub 릴리스의 공식 설치 패키지를 내려받아 설치)
+2. `container` 서비스 상태 확인 (중지 상태면 자동 시작)
 
-1. Homebrew 확인 (없으면 설치)
-2. Docker 확인 (없으면 설치)
-3. Docker 데몬 확인 (중지 상태면 자동 시작)
-
-### Local 모드 (`-local`)
-
-1. Homebrew 확인 (없으면 설치)
-2. ffmpeg 확인 (없으면 `brew install ffmpeg`)
+설치 패키지는 `/usr/local`에 설치되므로 관리자 인증이 필요합니다.
 
 ### 의존성 관련 옵션
 
@@ -157,6 +140,68 @@ make build/all    # darwin, linux, windows 전체
 
 # 의존성 체크 생략 (이미 설치된 경우)
 ./ffmpeg-converter -no-auto-install
+```
+
+## 설치는 1회, 실행마다 약 1초
+
+`container`는 설치되면 계속 재사용됩니다. 반복해서 설치되거나 다시 다운로드되지 않습니다.
+
+| 작업 | 시점 | 비용 |
+|------|------|------|
+| `container` 설치 | 첫 실행 시 1회 (없을 때만) | pkg 149MB 다운로드 + 관리자 인증 |
+| Linux 커널 다운로드 | 첫 실행 시 1회 | 29MB, 영구 보관 |
+| ffmpeg 이미지 pull | 첫 실행 시 1회 | ~950MB, 캐시 유지 |
+| 서비스 기동 | 매 실행 | 0.5초 |
+| 컨테이너 부팅 | 매 실행 | 0.6초 |
+
+즉 첫 실행 이후에는 **변환 시작까지 약 1.1초**만 소요되고, 영상 개수와 무관합니다.
+
+### 디스크 점유
+
+```
+~/Library/Application Support/com.apple.container/
+├── content     245MB   이미지 콘텐츠
+├── snapshots 693MB   컨테이너 스냅샷
+└── kernels      29MB   Linux 커널
+```
+
+현재 사용 중인 `latest` 이미지는 캐시에 남습니다. 완전히 비우려면 아래 "변환 후 자원 정리"를 참고하세요.
+
+### 업데이트
+
+자동 업데이트는 하지 않습니다. 설치된 시점의 최신 릴리스로 고정되며, 업데이트가 필요하면 공식 스크립트를 실행하세요.
+
+```bash
+container system stop
+/usr/local/bin/update-container.sh
+container system start
+```
+
+## 변환 후 자원 정리
+
+변환이 끝나면 컨테이너 런타임이 남기는 자원을 자동으로 정리합니다.
+
+| 대상 | 처리 |
+|------|------|
+| 컨테이너 | `--rm`으로 실행 직후 자동 삭제 |
+| microVM | 컨테이너 종료와 함께 내려감 |
+| 낡은 이미지 | 무태그(dangling) 이미지만 정리 — 현재 쓰는 `latest`는 캐시로 유지 |
+| 백그라운드 서비스 | `container-apiserver` 등 종료 (약 45MB frees) |
+
+`-keep-services`를 주면 서비스를 종료하지 않고 남겨둡니다. 반복 실행할 때
+서비스 기동(0.5초)을 아끼려면 사용하세요.
+
+```bash
+# 서비스는 남겨두고 변환만 수행
+./ffmpeg-converter -keep-services
+```
+
+디스크를 완전히 비우려면(현재 이미지까지 삭제):
+
+```bash
+container system start
+container image prune --all
+container system stop
 ```
 
 ## 프로젝트 구조
@@ -175,10 +220,7 @@ internal/
 └── deps/                # 의존성 관리
     ├── deps.go          # Manager 및 인터페이스
     ├── platform.go      # 플랫폼 감지
-    ├── homebrew.go      # Homebrew 의존성
-    ├── ffmpeg.go        # ffmpeg 의존성
-    ├── docker.go        # Docker 의존성
-    └── installer_darwin.go  # macOS 설치 유틸리티
+    └── container.go     # Apple container 의존성
 ```
 
 ## 관련 문서

@@ -9,11 +9,12 @@ import (
 	"strings"
 )
 
+// ContainerImage is the container image that provides ffmpeg.
+const ContainerImage = "linuxserver/ffmpeg:latest"
+
 type Config struct {
-	UseDocker    bool
 	CRF          string
 	Preset       string
-	Bitrate      string
 	Scale        string
 	IncludeAudio bool
 	DryRun       bool
@@ -31,13 +32,7 @@ func NewConverter(cfg Config) *Converter {
 }
 
 func (c *Converter) ConvertFile(inputPath, outputPath string) error {
-	var cmd *exec.Cmd
-
-	if c.Config.UseDocker {
-		cmd = c.buildDockerCommand(inputPath, outputPath)
-	} else {
-		cmd = c.buildLocalCommand(inputPath, outputPath)
-	}
+	cmd := c.buildContainerCommand(inputPath, outputPath)
 
 	fmt.Printf("Executing: %s\n", strings.Join(cmd.Args, " "))
 
@@ -51,12 +46,13 @@ func (c *Converter) ConvertFile(inputPath, outputPath string) error {
 }
 
 func (c *Converter) buildFFmpegArgs(inputFile, outputFile string) []string {
+	// libx264 rate control is driven by CRF alone. Passing -b:v alongside -crf
+	// has no effect, so target quality is expressed only through CRF.
 	args := []string{
 		"-i", inputFile,
 		"-c:v", "libx264",
 		"-crf", c.Config.CRF,
 		"-preset", c.Config.Preset,
-		"-b:v", c.Config.Bitrate,
 		"-vf", c.buildVideoFilter(),
 	}
 
@@ -117,7 +113,9 @@ func formatFloat(v float64) string {
 	return strings.TrimRight(strings.TrimRight(fmt.Sprintf("%.6f", v), "0"), ".")
 }
 
-func (c *Converter) buildDockerCommand(inputPath, outputPath string) *exec.Cmd {
+// buildContainerCommand builds the Apple container command that runs ffmpeg
+// inside the container image with the input and output directories mounted.
+func (c *Converter) buildContainerCommand(inputPath, outputPath string) *exec.Cmd {
 	inputDir := filepath.Dir(inputPath)
 	outputDir := filepath.Dir(outputPath)
 	inputFile := filepath.Base(inputPath)
@@ -125,20 +123,15 @@ func (c *Converter) buildDockerCommand(inputPath, outputPath string) *exec.Cmd {
 
 	ffmpegArgs := c.buildFFmpegArgs("/input/"+inputFile, "/output/"+outputFile)
 
-	dockerArgs := []string{
+	containerArgs := []string{
 		"run", "--rm",
 		"-v", fmt.Sprintf("%s:/input", inputDir),
 		"-v", fmt.Sprintf("%s:/output", outputDir),
-		"linuxserver/ffmpeg:latest",
+		ContainerImage,
 	}
-	dockerArgs = append(dockerArgs, ffmpegArgs...)
+	containerArgs = append(containerArgs, ffmpegArgs...)
 
-	return exec.Command("docker", dockerArgs...)
-}
-
-func (c *Converter) buildLocalCommand(inputPath, outputPath string) *exec.Cmd {
-	ffmpegArgs := c.buildFFmpegArgs(inputPath, outputPath)
-	return exec.Command("ffmpeg", ffmpegArgs...)
+	return exec.Command("container", containerArgs...)
 }
 
 func FindFiles(dir, ext string) ([]string, error) {

@@ -8,7 +8,6 @@ type Profile struct {
 	Description string
 	CRF         string
 	Preset      string
-	Bitrate     string
 	Scale       string
 	Audio       bool
 	Speed       float64
@@ -21,7 +20,6 @@ var BuiltinProfiles = map[string]Profile{
 		Description: "Default encoding settings",
 		CRF:         "18",
 		Preset:      "slow",
-		Bitrate:     "3000k",
 		Scale:       "1920:1080",
 		Audio:       false,
 		Speed:       1.0,
@@ -31,7 +29,6 @@ var BuiltinProfiles = map[string]Profile{
 		Description: "Play video at 2x speed (audio pitch preserved when enabled)",
 		CRF:         "18",
 		Preset:      "slow",
-		Bitrate:     "3000k",
 		Scale:       "1920:1080",
 		Audio:       false,
 		Speed:       2.0,

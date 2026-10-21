@@ -2,6 +2,7 @@ package ffmpeg
 
 import (
 	"reflect"
+	"strings"
 	"testing"
 )
 
@@ -121,10 +122,9 @@ func TestBuildAudioFilter(t *testing.T) {
 
 func TestBuildFFmpegArgs(t *testing.T) {
 	baseConfig := Config{
-		CRF:     "18",
-		Preset:  "slow",
-		Bitrate: "3000k",
-		Scale:   "1920:1080",
+		CRF:    "18",
+		Preset: "slow",
+		Scale:  "1920:1080",
 	}
 
 	tests := []struct {
@@ -144,7 +144,6 @@ func TestBuildFFmpegArgs(t *testing.T) {
 				"-c:v", "libx264",
 				"-crf", "18",
 				"-preset", "slow",
-				"-b:v", "3000k",
 				"-vf", "scale=1920:1080",
 				"-an",
 				"-y", "out.mp4",
@@ -162,7 +161,6 @@ func TestBuildFFmpegArgs(t *testing.T) {
 				"-c:v", "libx264",
 				"-crf", "18",
 				"-preset", "slow",
-				"-b:v", "3000k",
 				"-vf", "setpts=0.5*PTS,scale=1920:1080",
 				"-an",
 				"-y", "out.mp4",
@@ -181,7 +179,6 @@ func TestBuildFFmpegArgs(t *testing.T) {
 				"-c:v", "libx264",
 				"-crf", "18",
 				"-preset", "slow",
-				"-b:v", "3000k",
 				"-vf", "setpts=0.666667*PTS,scale=1920:1080",
 				"-c:a", "aac", "-b:a", "128k",
 				"-af", "atempo=1.5",
@@ -201,7 +198,6 @@ func TestBuildFFmpegArgs(t *testing.T) {
 				"-c:v", "libx264",
 				"-crf", "18",
 				"-preset", "slow",
-				"-b:v", "3000k",
 				"-vf", "setpts=0.2*PTS,scale=1920:1080",
 				"-c:a", "aac", "-b:a", "128k",
 				"-af", "atempo=2.0,atempo=2.0,atempo=1.25",
@@ -221,7 +217,6 @@ func TestBuildFFmpegArgs(t *testing.T) {
 				"-c:v", "libx264",
 				"-crf", "18",
 				"-preset", "slow",
-				"-b:v", "3000k",
 				"-vf", "scale=1920:1080",
 				"-c:a", "aac", "-b:a", "128k",
 				"-y", "out.mp4",
@@ -237,6 +232,28 @@ func TestBuildFFmpegArgs(t *testing.T) {
 				t.Errorf("buildFFmpegArgs() mismatch\n got: %v\nwant: %v", got, tc.want)
 			}
 		})
+	}
+}
+
+func TestBuildContainerCommand(t *testing.T) {
+	c := NewConverter(Config{CRF: "18", Preset: "slow", Scale: "1920:1080"})
+	cmd := c.buildContainerCommand("/videos/in/sample.avi", "/videos/out/sample.mp4")
+
+	args := cmd.Args
+	if args[0] != "container" {
+		t.Errorf("command = %q, want container", args[0])
+	}
+
+	wantPrefix := []string{"run", "--rm", "-v", "/videos/in:/input", "-v", "/videos/out:/output", ContainerImage}
+	if !reflect.DeepEqual(args[1:8], wantPrefix) {
+		t.Errorf("args[1:8] = %v, want %v", args[1:8], wantPrefix)
+	}
+
+	joined := strings.Join(args[8:], " ")
+	for _, want := range []string{"-i /input/sample.avi", "-y /output/sample.mp4"} {
+		if !strings.Contains(joined, want) {
+			t.Errorf("ffmpeg args %q missing %q", joined, want)
+		}
 	}
 }
 
