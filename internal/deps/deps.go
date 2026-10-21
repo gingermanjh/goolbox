@@ -11,7 +11,6 @@ type Status int
 
 const (
 	StatusNotInstalled Status = iota
-	StatusInstalled
 	StatusRunning
 	StatusStopped
 )
@@ -20,8 +19,6 @@ func (s Status) String() string {
 	switch s {
 	case StatusNotInstalled:
 		return "not installed"
-	case StatusInstalled:
-		return "installed"
 	case StatusRunning:
 		return "running"
 	case StatusStopped:
@@ -73,14 +70,6 @@ func (m *Manager) EnsureDependency(ctx context.Context, dep Dependency) error {
 	switch status {
 	case StatusRunning:
 		fmt.Fprintf(m.output, "✓ %s is running\n", dep.Name())
-		return nil
-
-	case StatusInstalled:
-		if dep.RequiresStart() {
-			fmt.Fprintf(m.output, "✓ %s is installed but not running\n", dep.Name())
-			return m.startDependency(ctx, dep)
-		}
-		fmt.Fprintf(m.output, "✓ %s is installed\n", dep.Name())
 		return nil
 
 	case StatusStopped:

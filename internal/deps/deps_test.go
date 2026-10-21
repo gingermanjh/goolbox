@@ -32,7 +32,6 @@ func (m *mockDependency) Install(ctx context.Context) error {
 	if m.installErr != nil {
 		return m.installErr
 	}
-	m.status = StatusInstalled
 	return nil
 }
 
@@ -73,53 +72,6 @@ func TestManager_EnsureDependency_AlreadyRunning(t *testing.T) {
 
 	if !strings.Contains(output.String(), "is running") {
 		t.Errorf("expected 'is running' in output, got: %s", output.String())
-	}
-}
-
-func TestManager_EnsureDependency_AlreadyInstalled(t *testing.T) {
-	var output bytes.Buffer
-	manager := NewManager(true, &output)
-
-	dep := &mockDependency{
-		name:          "test-dep",
-		status:        StatusInstalled,
-		requiresStart: false,
-	}
-
-	err := manager.EnsureDependency(context.Background(), dep)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-
-	if dep.installCalled {
-		t.Error("Install should not be called when already installed")
-	}
-
-	if !strings.Contains(output.String(), "is installed") {
-		t.Errorf("expected 'is installed' in output, got: %s", output.String())
-	}
-}
-
-func TestManager_EnsureDependency_InstalledButNeedsStart(t *testing.T) {
-	var output bytes.Buffer
-	manager := NewManager(true, &output)
-
-	dep := &mockDependency{
-		name:          "test-dep",
-		status:        StatusInstalled,
-		requiresStart: true,
-	}
-
-	err := manager.EnsureDependency(context.Background(), dep)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
-
-	if dep.installCalled {
-		t.Error("Install should not be called when already installed")
-	}
-	if !dep.startCalled {
-		t.Error("Start should be called when requires start")
 	}
 }
 
@@ -277,7 +229,6 @@ func TestStatus_String(t *testing.T) {
 		expected string
 	}{
 		{StatusNotInstalled, "not installed"},
-		{StatusInstalled, "installed"},
 		{StatusRunning, "running"},
 		{StatusStopped, "stopped"},
 		{Status(99), "unknown"},
