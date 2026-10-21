@@ -154,8 +154,7 @@ Available encoding profiles:
 
 | 옵션 | 기본값 | 설명 |
 |------|--------|------|
-| `-auto-install` | `true` | 누락된 의존성 자동 설치 |
-| `-no-auto-install` | `false` | 의존성 체크 완전히 건너뜀 |
+| `-auto-install` | `true` | 누락된 런타임 자동 설치 (`-auto-install=false`로 끄면 설치만 하지 않고, 이미 있으면 기동만 합니다) |
 | `-keep-services` | `false` | 변환 후에도 container 서비스를 계속 실행 |
 
 ### 기타 옵션
@@ -231,8 +230,8 @@ Available encoding profiles:
 ### 의존성 관리
 
 ```bash
-# 의존성 체크 건너뛰기 (이미 설치된 경우)
-./ffmpeg-converter -no-auto-install
+# 런타임을 설치하지 않고, 이미 설치된 것만 기동
+./ffmpeg-converter -auto-install=false
 ```
 
 ### 복합 예시
@@ -324,6 +323,13 @@ Container services stopped
 
 # 해결 2: 수동 시작
 container system start
+```
+
+**문제**: 홈 디렉터리 설치본이 옛 버전이다
+```bash
+# 해결: 설치를 지우고 다시 실행하면 최신 릴리스로 설치된다
+rm -rf ~/.local/container
+./ffmpeg-converter
 ```
 
 **문제**: 컨테이너 이미지를 찾을 수 없음

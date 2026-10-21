@@ -11,7 +11,6 @@ type Status int
 
 const (
 	StatusNotInstalled Status = iota
-	StatusInstalled
 	StatusRunning
 	StatusStopped
 )
@@ -20,8 +19,6 @@ func (s Status) String() string {
 	switch s {
 	case StatusNotInstalled:
 		return "not installed"
-	case StatusInstalled:
-		return "installed"
 	case StatusRunning:
 		return "running"
 	case StatusStopped:
@@ -75,14 +72,6 @@ func (m *Manager) EnsureDependency(ctx context.Context, dep Dependency) error {
 		fmt.Fprintf(m.output, "✓ %s is running\n", dep.Name())
 		return nil
 
-	case StatusInstalled:
-		if dep.RequiresStart() {
-			fmt.Fprintf(m.output, "✓ %s is installed but not running\n", dep.Name())
-			return m.startDependency(ctx, dep)
-		}
-		fmt.Fprintf(m.output, "✓ %s is installed\n", dep.Name())
-		return nil
-
 	case StatusStopped:
 		fmt.Fprintf(m.output, "⚠ %s is installed but stopped\n", dep.Name())
 		return m.startDependency(ctx, dep)
@@ -115,12 +104,8 @@ func (m *Manager) installDependency(ctx context.Context, dep Dependency) error {
 }
 
 func (m *Manager) startDependency(ctx context.Context, dep Dependency) error {
-	if !m.autoInstall {
-		return fmt.Errorf("%s is not running. Use -auto-install to start it automatically", dep.Name())
-	}
-
-	// Starting an installed dependency is part of the normal run, so it is not
-	// confirmed. Only the installation asks for a confirmation.
+	// Starting an installed dependency is part of the normal run, so it needs
+	// neither a confirmation nor the install to be allowed.
 	fmt.Fprintf(m.output, "Starting %s...\n", dep.Name())
 	if err := dep.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start %s: %w", dep.Name(), err)

@@ -1,6 +1,7 @@
 package ffmpeg
 
 import (
+	"context"
 	"reflect"
 	"strings"
 	"testing"
@@ -81,11 +82,11 @@ func TestBuildVideoFilter(t *testing.T) {
 		scale string
 		want  string
 	}{
-		{"no speed change keeps only scale", 1.0, "1920:1080", "scale=1920:1080"},
-		{"zero speed treated as no change", 0, "1920:1080", "scale=1920:1080"},
-		{"2x prepends setpts", 2.0, "1920:1080", "setpts=0.5*PTS,scale=1920:1080"},
-		{"0.5x prepends setpts", 0.5, "1280:720", "setpts=2*PTS,scale=1280:720"},
-		{"1.5x prepends setpts with rounded multiplier", 1.5, "1920:1080", "setpts=0.666667*PTS,scale=1920:1080"},
+		{"no speed change keeps only scale", 1.0, "1920:1080", "scale=1920:1080:force_original_aspect_ratio=decrease"},
+		{"zero speed treated as no change", 0, "1920:1080", "scale=1920:1080:force_original_aspect_ratio=decrease"},
+		{"2x prepends setpts", 2.0, "1920:1080", "setpts=0.5*PTS,scale=1920:1080:force_original_aspect_ratio=decrease"},
+		{"0.5x prepends setpts", 0.5, "1280:720", "setpts=2*PTS,scale=1280:720:force_original_aspect_ratio=decrease"},
+		{"1.5x prepends setpts with rounded multiplier", 1.5, "1920:1080", "setpts=0.666667*PTS,scale=1920:1080:force_original_aspect_ratio=decrease"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
@@ -144,7 +145,7 @@ func TestBuildFFmpegArgs(t *testing.T) {
 				"-c:v", "libx264",
 				"-crf", "18",
 				"-preset", "slow",
-				"-vf", "scale=1920:1080",
+				"-vf", "scale=1920:1080:force_original_aspect_ratio=decrease",
 				"-an",
 				"-y", "out.mp4",
 			},
@@ -161,7 +162,7 @@ func TestBuildFFmpegArgs(t *testing.T) {
 				"-c:v", "libx264",
 				"-crf", "18",
 				"-preset", "slow",
-				"-vf", "setpts=0.5*PTS,scale=1920:1080",
+				"-vf", "setpts=0.5*PTS,scale=1920:1080:force_original_aspect_ratio=decrease",
 				"-an",
 				"-y", "out.mp4",
 			},
@@ -179,7 +180,7 @@ func TestBuildFFmpegArgs(t *testing.T) {
 				"-c:v", "libx264",
 				"-crf", "18",
 				"-preset", "slow",
-				"-vf", "setpts=0.666667*PTS,scale=1920:1080",
+				"-vf", "setpts=0.666667*PTS,scale=1920:1080:force_original_aspect_ratio=decrease",
 				"-c:a", "aac", "-b:a", "128k",
 				"-af", "atempo=1.5",
 				"-y", "out.mp4",
@@ -198,7 +199,7 @@ func TestBuildFFmpegArgs(t *testing.T) {
 				"-c:v", "libx264",
 				"-crf", "18",
 				"-preset", "slow",
-				"-vf", "setpts=0.2*PTS,scale=1920:1080",
+				"-vf", "setpts=0.2*PTS,scale=1920:1080:force_original_aspect_ratio=decrease",
 				"-c:a", "aac", "-b:a", "128k",
 				"-af", "atempo=2.0,atempo=2.0,atempo=1.25",
 				"-y", "out.mp4",
@@ -217,7 +218,7 @@ func TestBuildFFmpegArgs(t *testing.T) {
 				"-c:v", "libx264",
 				"-crf", "18",
 				"-preset", "slow",
-				"-vf", "scale=1920:1080",
+				"-vf", "scale=1920:1080:force_original_aspect_ratio=decrease",
 				"-c:a", "aac", "-b:a", "128k",
 				"-y", "out.mp4",
 			},
@@ -242,7 +243,7 @@ func TestBuildContainerCommand(t *testing.T) {
 		Preset:        "slow",
 		Scale:         "1920:1080",
 	})
-	cmd := c.buildContainerCommand("/videos/in/sample.avi", "/videos/out/sample.mp4")
+	cmd := c.buildContainerCommand(context.Background(), "/videos/in/sample.avi", "/videos/out/sample.mp4")
 
 	args := cmd.Args
 	if args[0] != "/usr/local/bin/container" {

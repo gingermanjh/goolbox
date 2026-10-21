@@ -24,3 +24,6 @@ vendor/
 
 # coding-agent convention files (kept locally, never committed)
 /CLAUDE.md
+
+# personal machine setup notes
+/GO_SETUP_GUIDE.md
