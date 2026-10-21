@@ -210,6 +210,25 @@ func TestManager_ContextTimeout(t *testing.T) {
 	}
 }
 
+func TestManager_EnsureDependency_StoppedStartsWhenInstallIsDisabled(t *testing.T) {
+	var output bytes.Buffer
+	manager := NewManager(false, &output)
+
+	dep := &mockDependency{
+		name:          "test-dep",
+		status:        StatusStopped,
+		requiresStart: true,
+	}
+
+	err := manager.EnsureDependency(context.Background(), dep)
+	if err != nil {
+		t.Errorf("unexpected error: %v", err)
+	}
+	if !dep.startCalled {
+		t.Error("Start should be called when the runtime is installed")
+	}
+}
+
 func TestManager_EnsureDependency_StoppedStartsWithoutConfirmation(t *testing.T) {
 	var output bytes.Buffer
 	// No input is configured, so a confirmation prompt would fail the run.

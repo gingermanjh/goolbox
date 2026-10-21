@@ -48,7 +48,6 @@ func run() int {
 
 	// Dependency management flags
 	autoInstall := flag.Bool("auto-install", true, "Automatically install missing dependencies (default: enabled)")
-	noAutoInstall := flag.Bool("no-auto-install", false, "Skip dependency checking entirely")
 
 	// Cleanup flags
 	keepServices := flag.Bool("keep-services", false, "Keep the container services running after the conversion")
@@ -98,11 +97,9 @@ func run() int {
 	container := deps.NewContainerDependency()
 
 	// Check and install dependencies if needed
-	if !*noAutoInstall {
-		if err := ensureDependencies(container, *autoInstall); err != nil {
-			fmt.Fprintf(os.Stderr, "Dependency error: %v\n", err)
-			return 1
-		}
+	if err := ensureDependencies(container, *autoInstall); err != nil {
+		fmt.Fprintf(os.Stderr, "Dependency error: %v\n", err)
+		return 1
 	}
 
 	// Release the container runtime resources when the conversion is done.

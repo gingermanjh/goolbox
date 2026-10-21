@@ -115,12 +115,8 @@ func (m *Manager) installDependency(ctx context.Context, dep Dependency) error {
 }
 
 func (m *Manager) startDependency(ctx context.Context, dep Dependency) error {
-	if !m.autoInstall {
-		return fmt.Errorf("%s is not running. Use -auto-install to start it automatically", dep.Name())
-	}
-
-	// Starting an installed dependency is part of the normal run, so it is not
-	// confirmed. Only the installation asks for a confirmation.
+	// Starting an installed dependency is part of the normal run, so it needs
+	// neither a confirmation nor the install to be allowed.
 	fmt.Fprintf(m.output, "Starting %s...\n", dep.Name())
 	if err := dep.Start(ctx); err != nil {
 		return fmt.Errorf("failed to start %s: %w", dep.Name(), err)
